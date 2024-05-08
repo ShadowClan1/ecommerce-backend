@@ -1,8 +1,9 @@
+const { Product, Coupon } = require("../db/db");
 const { RES, STATUS } = require("../utils/ResponseHandlers");
-
-if (process.env.NODE_ENV !== "production") {
-  require("dotenv").load();
-}
+require('dotenv').config()
+// if (process.env.NODE_ENV !== "production") {
+//   require("dotenv").load();
+// }
 
 const express = require("express"),
   router = express.Router();
@@ -18,19 +19,19 @@ router.get("/", async (req, res, next) => {
 
 router.get("/list-products", async (req, res, next) => {
   try {
-    const list = [];
-
-    RES(res, STATUS.OK, "Products list fetched successfully", list);
+    const products = await Product.findAll();
+    RES(res, STATUS.OK, "Products list fetched successfully", products);
   } catch (err) {
     RES(res, STATUS.INTERNAL_SERVER_ERROR, err.message);
   }
 });
 
-router.post("/apply-copoun", async (req, res, next) => {
+router.post("/apply-copoun", async (req, res) => {
   try {
+    console.log(req.body);
     const { copounCode } = req.body;
 
-    let { isValid, discountAmount } = applyCopoun(copounCode);
+    let { isValid, discountAmount } = await applyCopoun(copounCode);
     if (!isValid) {
       return RES(res, STATUS.BAD_REQUEST, "Copoun code not valid");
     }
@@ -42,7 +43,13 @@ router.post("/apply-copoun", async (req, res, next) => {
 });
 
 async function applyCopoun(copounCode) {
-  return { isValid: true, discountAmount: 10 };
+  const coupon = await Coupon.findOne({ where: { coupon_code: copounCode } });
+  if (!coupon) {
+    return { isValid: false };
+  }
+  let discountAmount = coupon.discount;
+
+  return { isValid: true, discountAmount };
 }
 
 module.exports = router;
